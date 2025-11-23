@@ -4,7 +4,7 @@ services:
   vllm-api:
     build:
       context: .
-      dockerfile: Dockerfile.gpu
+      dockerfile: Dockerfile
     image: vllm-fastapi-backend:latest
     container_name: vllm-api-gpu
     runtime: nvidia
