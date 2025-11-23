@@ -30,10 +30,7 @@ COPY requirements.txt .
 # Install PyTorch with CUDA support first
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-# Install vLLM (compatible with CUDA 12.1)
-RUN pip install --no-cache-dir vllm
-
-# Install other dependencies
+# Install all dependencies including vLLM 0.5.5 from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
