@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  vllm-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    image: vllm-fastapi-backend:latest
+    container_name: vllm-api-gpu
+    runtime: nvidia
+
+    ports:
+      - "${PORT:-8000}:8000"
+
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0  # Change to 0,1,2,3 for multi-GPU
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MODEL_NAME=${MODEL_NAME:-Qwen/Qwen2-0.5B}
+      - MODEL_PATH=${MODEL_PATH:-}
+
+      # API Security (optional)
+      - API_KEY=${API_KEY:-}
+
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+      # Optional: Mount local models directory
+      # - ./models:/app/models
+
+    # GPU Resource Configuration
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Use 'all' or specific count like '1', '2', etc.
+              capabilities: [gpu]
+        # Optional: Memory limits
+        limits:
+          memory: 16G  # Adjust based on your GPU memory
+
+    # Critical for PyTorch tensor operations and vLLM performance
+    # Use EITHER ipc: host OR shm_size (ipc:host is recommended for best performance)
+    ipc: host
+
+    # Alternative to ipc:host - use if ipc:host causes issues
+    # shm_size: '16gb'  # Adjust based on model size and batch size
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s  # Longer start period for model loading on GPU
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  huggingface-cache:
+    driver: local
+
+networks:
+  default:
+    name: vllm-gpu-network

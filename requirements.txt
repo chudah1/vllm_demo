@@ -1,0 +1,25 @@
+# Core dependencies
+# Downgraded to 0.5.5 to avoid v1 engine sampled_ids bug with Phi-3
+vllm==0.5.5
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# OpenAI compatibility
+openai>=1.0.0
+python-dotenv>=1.0.0
+
+# Additional utilities
+httpx>=0.25.0
+aiofiles>=23.0.0
+click>=8.0.0
+huggingface-hub>=0.19.0
+
+# Monitoring and logging
+prometheus-client>=0.18.0
+python-json-logger>=2.0.0
+
+# Testing (development)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
