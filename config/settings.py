@@ -98,6 +98,9 @@ def get_vllm_engine_args() -> dict:
         args["enable_chunked_prefill"] = True  # Enable for better latency
         args["enable_prefix_caching"] = True  # Enable prefix caching for repeated prompts
 
+        # Disable swap space to avoid memory allocation errors on low RAM systems
+        args["swap_space"] = 0  # Disable CPU swap space (only use GPU memory)
+
         # Multi-GPU settings
         gpu_count = torch.cuda.device_count()
         if gpu_count > 1 and settings.tensor_parallel_size > 1:
