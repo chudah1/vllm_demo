@@ -83,6 +83,8 @@ def get_vllm_engine_args() -> dict:
         "max_num_seqs": settings.max_num_seqs,
         "trust_remote_code": True,  # Allow model code execution
         "tensor_parallel_size": 1,  # Always 1 for CPU and single GPU
+        "quantization": None,  # Disable quantization (override model's default FP8 if present)
+        "disable_v1": True,  # Explicitly disable V1 engine (use legacy V0 engine for compatibility)
     }
 
     # GPU-specific settings (only if CUDA is available)

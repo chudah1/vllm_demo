@@ -20,6 +20,9 @@ services:
       - MODEL_NAME=${MODEL_NAME:-Qwen/Qwen2-0.5B}
       - MODEL_PATH=${MODEL_PATH:-}
 
+      # vLLM Engine Configuration
+      - VLLM_USE_V1=0  # Disable V1 engine (not compatible with older GPUs)
+
       # API Security (optional)
       - API_KEY=${API_KEY:-}
 
