@@ -1,6 +1,7 @@
 # Core dependencies
 # Downgraded to 0.5.5 to avoid v1 engine sampled_ids bug with Phi-3
 vllm==0.5.5
+pyairports  # Required by vllm's outlines dependency
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 pydantic>=2.0.0

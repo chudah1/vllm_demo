@@ -1,6 +1,6 @@
 """
 FastAPI server for vLLM inference.
-CPU-only compatible setup.
+GPU-enabled setup for NVIDIA CUDA.
 """
 
 import os
@@ -16,12 +16,7 @@ from src.api.routes import router
 from src.vllm_engine import VLLMEngine
 from config.settings import settings, get_vllm_engine_args
 
-# Force CPU-only mode
-os.environ["VLLM_TARGET_DEVICE"] = "cpu"
-os.environ["VLLM_CPU_ONLY"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-
+# GPU mode configuration
 # Disable v1 engine to avoid sampled_ids tensor bug with Phi-3
 os.environ["VLLM_USE_V1"] = "0"
 
@@ -56,8 +51,8 @@ async def lifespan(app: FastAPI):
 
 # --- FastAPI app ---
 app = FastAPI(
-    title="vLLM CPU API Server",
-    description="OpenAI-compatible API server using vLLM (CPU-only)",
+    title="vLLM GPU API Server",
+    description="OpenAI-compatible API server using vLLM with GPU acceleration",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
@@ -77,7 +72,7 @@ app.include_router(router)
 @app.get("/")
 async def root():
     return {
-        "name": "vLLM CPU API Server",
+        "name": "vLLM GPU API Server",
         "version": "1.0.0",
         "model": settings.model_name,
         "endpoints": {
