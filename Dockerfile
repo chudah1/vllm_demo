@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Override the vLLM entrypoint to run your custom FastAPI application
-ENTRYPOINT ["python", "-m", "src.server"]
+ENTRYPOINT ["python3", "-m", "src.server"]
