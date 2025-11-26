@@ -108,6 +108,39 @@ class VLLMEngine:
                     yield new_text
                 previous_text = current_text
 
+    async def get_model_info(self) -> Dict:
+        """Get model information."""
+        return {
+            "id": self.model_name,
+            "object": "model",
+            "owned_by": "vllm",
+        }
+
+    async def chat_completion(
+        self,
+        messages: List[Dict],
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = -1,
+        stop: Optional[List[str]] = None,
+        stream: bool = False,
+    ) -> Union[str, AsyncIterator[str]]:
+        """Generate chat completion from messages."""
+        # Convert messages to a single prompt (simple implementation)
+        prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+        prompt += "\nassistant:"
+
+        return await self.generate(
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            stop=stop,
+            stream=stream,
+        )
+
     async def shutdown(self):
         """Shutdown the engine and cleanup resources."""
         if self.engine:
