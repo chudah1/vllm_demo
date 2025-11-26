@@ -84,7 +84,6 @@ def get_vllm_engine_args() -> dict:
         "trust_remote_code": True,  # Allow model code execution
         "tensor_parallel_size": 1,  # Always 1 for CPU and single GPU
         "quantization": None,  # Disable quantization (override model's default FP8 if present)
-        "disable_v1": True,  # Explicitly disable V1 engine (use legacy V0 engine for compatibility)
     }
 
     # GPU-specific settings (only if CUDA is available)
@@ -95,13 +94,13 @@ def get_vllm_engine_args() -> dict:
         # GPU optimization parameters
         args["gpu_memory_utilization"] = settings.gpu_memory_utilization
         args["dtype"] = "auto"  # Let vLLM choose optimal dtype (bfloat16/float16)
-        args["max_num_batched_tokens"] = 8192  # Higher for better throughput
+        args["max_num_batched_tokens"] = 16384  # Higher for better throughput (4 vCPUs)
         args["max_num_seqs"] = settings.max_num_seqs
         args["enable_chunked_prefill"] = True  # Enable for better latency
         args["enable_prefix_caching"] = True  # Enable prefix caching for repeated prompts
 
-        # Disable swap space to avoid memory allocation errors on low RAM systems
-        args["swap_space"] = 0  # Disable CPU swap space (only use GPU memory)
+        # Enable swap space (now have 15GB RAM - can afford 2GB for overflow)
+        args["swap_space"] = 2  # 2GB CPU swap space for KV cache overflow
 
         # Multi-GPU settings
         gpu_count = torch.cuda.device_count()
