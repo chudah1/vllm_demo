@@ -20,10 +20,10 @@ class Settings(BaseSettings):
     model_path: Optional[str] = None
 
     # vLLM Configuration
-    gpu_memory_utilization: float = 0.9
+    gpu_memory_utilization: float = 0.75  # Conservative for 7B models on T4
     tensor_parallel_size: int = 1
-    max_model_len: int = 4096
-    max_num_seqs: int = 256
+    max_model_len: int = 2048  # Reduced to fit 7B models
+    max_num_seqs: int = 64  # Reduced to decrease memory usage
 
     # API Security
     api_key: Optional[str] = None
@@ -94,13 +94,13 @@ def get_vllm_engine_args() -> dict:
         # GPU optimization parameters
         args["gpu_memory_utilization"] = settings.gpu_memory_utilization
         args["dtype"] = "auto"  # Let vLLM choose optimal dtype (bfloat16/float16)
-        args["max_num_batched_tokens"] = 16384  # Higher for better throughput (4 vCPUs)
+        args["max_num_batched_tokens"] = 4096  # Further reduced for 7B models
         args["max_num_seqs"] = settings.max_num_seqs
         args["enable_chunked_prefill"] = True  # Enable for better latency
-        args["enable_prefix_caching"] = True  # Enable prefix caching for repeated prompts
+        args["enable_prefix_caching"] = False  # Disable to save memory
 
-        # Enable swap space (now have 15GB RAM - can afford 2GB for overflow)
-        args["swap_space"] = 2  # 2GB CPU swap space for KV cache overflow
+        # Enable swap space (now have 15GB RAM - can afford 6GB for overflow)
+        args["swap_space"] = 6  # 6GB CPU swap space for KV cache overflow
 
         # Multi-GPU settings
         gpu_count = torch.cuda.device_count()
