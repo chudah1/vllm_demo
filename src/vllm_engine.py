@@ -6,6 +6,7 @@ Provides async methods for text generation with streaming support.
 import logging
 import base64
 import io
+from typing import AsyncIterator, Dict, List, Optional, Union
 from PIL import Image
 from transformers import AutoTokenizer  # Generic tokenizer support
 from vllm import AsyncLLMEngine, SamplingParams
