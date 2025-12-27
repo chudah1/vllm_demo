@@ -267,7 +267,18 @@ async def _non_stream_chat_completion(
     )
 
     # Calculate token usage (approximation)
-    prompt_text = " ".join([msg["content"] for msg in messages])
+    prompt_text_parts = []
+    for msg in messages:
+        content = msg.get("content")
+        if isinstance(content, str):
+            prompt_text_parts.append(content)
+        elif isinstance(content, list):
+            # Extract text from multimodal content parts
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    prompt_text_parts.append(part.get("text", ""))
+    
+    prompt_text = " ".join(prompt_text_parts)
     prompt_tokens = len(prompt_text.split())
     completion_tokens = len(output.split())
 

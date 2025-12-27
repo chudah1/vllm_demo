@@ -84,7 +84,7 @@ class ChatMessage(BaseModel):
         description="Role of the message sender (system, user, or assistant)",
         pattern="^(system|user|assistant)$",
     )
-    content: str = Field(..., description="Content of the message")
+    content: Union[str, List[Dict[str, Any]]] = Field(..., description="Content of the message")
     name: Optional[str] = Field(None, description="Name of the sender (optional)")
 
     class Config:
