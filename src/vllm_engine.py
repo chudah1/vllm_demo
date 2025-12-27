@@ -4,7 +4,10 @@ Provides async methods for text generation with streaming support.
 """
 
 import logging
-from typing import AsyncIterator, Dict, List, Optional, Union
+import base64
+import io
+from PIL import Image
+from transformers import AutoTokenizer  # Generic tokenizer support
 from vllm import AsyncLLMEngine, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.utils import random_uuid
@@ -20,6 +23,7 @@ class VLLMEngine:
         """
         self.engine: Optional[AsyncLLMEngine] = None
         self.engine_args = engine_args.copy()
+        self.tokenizer = None  # To be initialized
 
     
         self.model_name = self.engine_args.get("model", "unknown")
@@ -42,6 +46,16 @@ class VLLMEngine:
             args = AsyncEngineArgs(**engine_args_dict)
             logger.info("AsyncEngineArgs created successfully")
 
+            # --- Initialize Tokenizer for Chat Templates ---
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name, 
+                    trust_remote_code=True
+                )
+                logger.info(f"Tokenizer initialized for {self.model_name}")
+            except Exception as e:
+                logger.warning(f"Failed to load tokenizer: {e}. Chat templating might fail.")
+
             # --- Initialize AsyncLLMEngine ---
             self.engine = AsyncLLMEngine.from_engine_args(args)
             logger.info("vLLM engine initialized successfully")
@@ -62,6 +76,7 @@ class VLLMEngine:
         top_k: int = -1,
         stop: Optional[List[str]] = None,
         stream: bool = False,
+        multi_modal_data: Optional[Dict] = None,
     ) -> Union[str, AsyncIterator[str]]:
         """Generate text from a prompt."""
         if not self.engine:
@@ -80,13 +95,21 @@ class VLLMEngine:
 
         request_id = random_uuid()
 
+        # Construct inputs for vLLM.
+        # Use a dict for multimodal inputs to pass 'multi_modal_data' correctly.
+        inputs = {"prompt": prompt}
+        if multi_modal_data:
+            inputs["multi_modal_data"] = multi_modal_data
+        
+        engine_prompt = inputs if multi_modal_data else prompt
+
         if stream:
-            return self._stream_generate(prompt, sampling_params, request_id)
+            return self._stream_generate(engine_prompt, sampling_params, request_id)
         else:
-            return await self._non_stream_generate(prompt, sampling_params, request_id)
+            return await self._non_stream_generate(engine_prompt, sampling_params, request_id)
 
     async def _non_stream_generate(
-        self, prompt: str, sampling_params: SamplingParams, request_id: str
+        self, prompt: Union[str, Dict], sampling_params: SamplingParams, request_id: str
     ) -> str:
         final_output = ""
         results_generator = self.engine.generate(prompt, sampling_params, request_id)
@@ -96,7 +119,7 @@ class VLLMEngine:
         return final_output
 
     async def _stream_generate(
-        self, prompt: str, sampling_params: SamplingParams, request_id: str
+        self, prompt: Union[str, Dict], sampling_params: SamplingParams, request_id: str
     ) -> AsyncIterator[str]:
         previous_text = ""
         results_generator = self.engine.generate(prompt, sampling_params, request_id)
@@ -127,18 +150,104 @@ class VLLMEngine:
         stream: bool = False,
     ) -> Union[str, AsyncIterator[str]]:
         """Generate chat completion from messages."""
-        # Convert messages to a single prompt (simple implementation)
-        prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
-        prompt += "\nassistant:"
+    async def chat_completion(
+        self,
+        messages: List[Dict],
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = -1,
+        stop: Optional[List[str]] = None,
+        stream: bool = False,
+    ) -> Union[str, AsyncIterator[str]]:
+        """Generate chat completion from messages."""
+        
+        # Prepare messages for tokenizer and extract images for vLLM
+        tokenizer_messages = []
+        multi_modal_data = {}
+        image_count = 0
+
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            
+            new_msg = {"role": role, "content": []}
+            
+            if isinstance(content, str):
+                new_msg["content"] = content # AutoTokenizer handles str content usually, or we wrap in list
+                # Actually standardize to list for robust multimodal handling if template supports it
+                # But simple string is safer for text-only turns if template expects that.
+                # Let's keep it simple: if str, pass str.
+                pass
+            elif isinstance(content, list):
+                new_content = []
+                for part in content:
+                    part_type = part.get("type")
+                    if part_type == "text":
+                         new_content.append({"type": "text", "text": part.get("text", "")})
+                    elif part_type == "image_url" or part_type == "image" or  (part.get("source", {}).get("type") == "base64"):
+                        # Extract image data
+                        image_data = None
+                        try:
+                            if part_type == "image_url":
+                                url_data = part.get("image_url", {}).get("url", "")
+                                if url_data.startswith("data:image"):
+                                    base64_str = url_data.split(",")[1]
+                                    image_bytes = base64.b64decode(base64_str)
+                                    image_data = Image.open(io.BytesIO(image_bytes))
+                            elif part.get("source", {}).get("type") == "base64":
+                                base64_str = part["source"]["data"]
+                                image_bytes = base64.b64decode(base64_str)
+                                image_data = Image.open(io.BytesIO(image_bytes))
+                        except Exception as e:
+                            logger.error(f"Failed to decode image: {e}")
+
+                        if image_data:
+                            # Add generic image placeholder for tokenizer
+                            # Check if Qwen2-VL needs specific placeholder? 
+                            # Most AutoTokenizers handle {"type": "image"} by inserting their token (e.g. <|image_pad|>)
+                            new_content.append({"type": "image"}) 
+                            
+                            # Add logic to append to multi_modal_data
+                            if "image" not in multi_modal_data:
+                                multi_modal_data["image"] = image_data
+                            else:
+                                if not isinstance(multi_modal_data["image"], list):
+                                    multi_modal_data["image"] = [multi_modal_data["image"]]
+                                multi_modal_data["image"].append(image_data)
+                            image_count += 1
+                        else:
+                             new_content.append({"type": "text", "text": "[Image Failed to Load]"})
+                
+                new_msg["content"] = new_content
+            
+            tokenizer_messages.append(new_msg)
+
+        # Apply chat template
+        if hasattr(self, "tokenizer") and self.tokenizer:
+            # We must ensure apply_chat_template logic matches what model expects
+            # Qwen2-VL usually works with {"type": "image"} entries
+            full_prompt = self.tokenizer.apply_chat_template(
+                tokenizer_messages, 
+                tokenize=False, 
+                add_generation_prompt=True
+            )
+        else:
+            # Fallback (shouldn't happen if initialized correctly)
+            logger.warning("Tokenizer not initialized, falling back to simple join")
+            full_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+
+        final_mm_data = multi_modal_data if image_count > 0 else None
 
         return await self.generate(
-            prompt=prompt,
+            prompt=full_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             stop=stop,
             stream=stream,
+            multi_modal_data=final_mm_data
         )
 
     async def shutdown(self):

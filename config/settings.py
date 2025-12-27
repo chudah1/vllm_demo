@@ -16,13 +16,13 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # Model Configuration
-    model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+    model_name: str = "Qwen/Qwen2-VL-7B-Instruct"
     model_path: Optional[str] = None
 
     # vLLM Configuration
-    gpu_memory_utilization: float = 0.98  # Maximize GPU memory usage
+    gpu_memory_utilization: float = 0.95  # High utilization for vision model
     tensor_parallel_size: int = 1
-    max_model_len: int = 40960  # Reduced from 65k to fit in memory (need ~37k)
+    max_model_len: int = 32768  # Safe default for Qwen2-VL on T4/L4
     max_num_seqs: int = 64  # Reduced to decrease memory usage
 
     # API Security
