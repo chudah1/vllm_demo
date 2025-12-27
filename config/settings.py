@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # vLLM Configuration
     gpu_memory_utilization: float = 0.95  # High utilization for vision model
     tensor_parallel_size: int = 1
-    max_model_len: int = 32768  # Safe default for Qwen2-VL on T4/L4
+    max_model_len: int = 4096  # Adjusted to fit in VRAM
     max_num_seqs: int = 64  # Reduced to decrease memory usage
 
     # API Security
