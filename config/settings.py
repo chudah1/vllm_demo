@@ -23,8 +23,6 @@ class Settings(BaseSettings):
     gpu_memory_utilization: float = 0.95  # High utilization for vision model
     tensor_parallel_size: int = 1
     max_model_len: int = 32768  # Safe default for Qwen2-VL on T4/L4
-    max_num_seqs: int = 64  # Reduced to decrease memory usage
-
     # API Security
     api_key: Optional[str] = None
 
