@@ -16,13 +16,13 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # Model Configuration
-    model_name: str = "meta-llama/Llama-3.2-3B-Instruct"
+    model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     model_path: Optional[str] = None
 
     # vLLM Configuration
-    gpu_memory_utilization: float = 0.75  # Conservative for 7B models on T4
+    gpu_memory_utilization: float = 0.98  # Maximize GPU memory usage
     tensor_parallel_size: int = 1
-    max_model_len: int = 2048  # Reduced to fit 7B models
+    max_model_len: int = 40960  # Reduced from 65k to fit in memory (need ~37k)
     max_num_seqs: int = 64  # Reduced to decrease memory usage
 
     # API Security
